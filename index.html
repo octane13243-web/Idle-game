@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GIGA-GRIND Incremental</title>
+<style>
+body {margin:0;font-family:sans-serif;background:#0b1220;color:#fff;display:flex;flex-direction:column;align-items:center;padding:10px;}
+h1 {color:#ffb400;text-shadow:0 0 10px #000;}
+#money {font-size:1.5rem;margin:5px 0;}
+.menu-bar {display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.tab-btn {padding:10px 15px;border:none;border-radius:10px;font-weight:700;cursor:pointer;background:linear-gradient(90deg,#ff7e5f,#feb47b);color:#081018;transition:0.2s;}
+.tab-btn:hover{transform:scale(1.05);}
+.menu-content {display:none;width:100%;max-width:1000px;}
+.menu-content.active {display:block;}
+.panel {background:rgba(255,255,255,0.03);padding:12px;border-radius:10px;margin-bottom:10px;}
+.row {display:flex;gap:10px;flex-wrap:wrap;}
+.card {flex:1;min-width:250px;padding:12px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);}
+.action {display:inline-block;padding:10px 14px;border-radius:10px;border:none;background:linear-gradient(90deg,#36d1dc,#5b86e5);color:white;font-weight:800;cursor:pointer;margin:5px 0;transition:0.2s;}
+.action:hover{transform:scale(1.05);}
+.small {font-size:0.9rem;color:#9fb6c7;}
+.prestige-card {padding:10px;border-radius:10px;margin-bottom:10px;transition:0.2s;}
+.collapsible {background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;margin-top:8px;cursor:pointer;}
+.collapsible + .content {display:none;padding:8px;margin-top:8px;border-top:1px dashed rgba(255,255,255,0.04);}
+</style>
+</head>
+<body>
+
+<h1>GIGA-GRIND Incremental</h1>
+<div id="money">Money: 0</div>
+
+<div class="menu-bar">
+  <button class="tab-btn" data-menu="main">Main 💰</button>
+  <button class="tab-btn" data-menu="prestiges">Prestiges 🌟</button>
+  <button class="tab-btn" data-menu="minigames">Minigames 🎮</button>
+</div>
+
+<!-- MAIN -->
+<div id="main" class="menu-content active">
+  <div class="panel row">
+    <div class="card" style="text-align:center">
+      <h2>Actions</h2>
+      <button id="btnClick" class="action">💸 Click</button>
+      <button id="btnUpgrade" class="action">⚡ Buy Main Upgrade</button>
+      <button id="btnAuto" class="action">🤖 Buy Auto</button>
+      <div class="small">Main upgrades reset on prestige. Autos count offline.</div>
+    </div>
+    <div class="card">
+      <h2>Stats</h2>
+      <div id="stats" class="small"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PRESTIGES -->
+<div id="prestiges" class="menu-content">
+  <div class="panel">
+    <h2>Prestige Ladder</h2>
+    <div class="small">Click a prestige to reset and gain points. Each layer boosts all lower layers multiplicatively.</div>
+    <div id="prestigeList"></div>
+  </div>
+</div>
+
+<!-- MINIGAMES -->
+<div id="minigames" class="menu-content">
+  <div class="panel">
+    <h2>Minigames</h2>
+    <div class="small">No minigames yet. Future updates will add them here.</div>
+  </div>
+</div>
+
+<script>
+/* ===== STATE ===== */
+const SAVE_KEY = 'giga_grind_inc';
+let state = {
+  money: 0,
+  baseClick: 1,
+  baseIdle: 0.5,
+  mainUpgrades: 0,
+  mainUpgradeCost: 1000,
+  autoOwned: false,
+  autoCost: 5000,
+  layers: {
+    rebirth: { pts:0, upgrades:{clickMult:0,idleMult:0,autoStrength:0}, upgradeCosts:{clickMult:10,idleMult:15,autoStrength:20}, req:1e6, tierFactor:2, color:'#FFD700', title:'Rebirth' },
+    ascension: { pts:0, upgrades:{clickMult:0,idleMult:0,autoStrength:0}, upgradeCosts:{clickMult:25,idleMult:40,autoStrength:60}, req:1e12, tierFactor:10, color:'#DA70D6', title:'Ascension' },
+    eternity: { pts:0, upgrades:{clickMult:0,idleMult:0,autoStrength:0}, upgradeCosts:{clickMult:200,idleMult:300,autoStrength:400}, req:1e18, tierFactor:50, color:'#00BFFF', title:'Eternity' },
+    oblivion: { pts:0, upgrades:{clickMult:0,idleMult:0,autoStrength:0}, upgradeCosts:{clickMult:1000,idleMult:1500,autoStrength:2000}, req:1e24, tierFactor:100, color:'#333333', title:'Oblivion' }
+  },
+  lastTime: Date.now()
+};
+const defaultLayers = JSON.parse(JSON.stringify(state.layers));
+
+/* ===== LOAD SAVE ===== */
+(function load(){ try{ const raw=localStorage.getItem(SAVE_KEY); if(raw) Object.assign(state,JSON.parse(raw)); }catch(e){console.warn(e);} })();
+
+/* ===== FORMAT NUMBER ===== */
+const SUFFIX = ["","K","M","B","T","Qua","Qui","Sex","Sep","Oct","Und","Duode"];
+function formatNumber(n){ if(!isFinite(n)) return "∞"; if(n<1000) return Math.floor(n); let tier=0; let num=n; while(num>=1000 && tier<SUFFIX.length-1){num/=1000;tier++;} const decimals=num<10?2:num<100?1:0; return num.toFixed(decimals)+SUFFIX[tier]; }
+
+/* ===== EFFECTIVE VALUES ===== */
+function computePrestigeMultiplier(){
+  let mult=1;
+  for(const key in state.layers){
+    const L=state.layers[key];
+    mult*=Math.pow(L.tierFactor,L.pts);
+    mult*=Math.pow(2,L.upgrades.clickMult);
+    mult*=Math.pow(1.5,L.upgrades.idleMult);
+  }
+  return mult;
+}
+function computeEffectiveClick(){return state.baseClick*Math.pow(1.2,state.mainUpgrades)*computePrestigeMultiplier();}
+function computeEffectiveIdle(){return state.baseIdle*Math.pow(1.1,state.mainUpgrades)*computePrestigeMultiplier();}
+function computeEffectiveAutoPerSecond(){let str=0; for(const key in state.layers) str+=state.layers[key].upgrades.autoStrength||0; return computeEffectiveClick()*0.5*str;}
+function saveState(){state.lastTime=Date.now();localStorage.setItem(SAVE_KEY,JSON.stringify(state));}
+
+/* ===== UI UPDATE ===== */
+function uiUpdate(){
+  const idle = computeEffectiveIdle();
+  const auto = state.autoOwned ? computeEffectiveAutoPerSecond() : 0;
+  document.getElementById('money').innerText = `Money: ${formatNumber(state.money)}`;
+  document.getElementById('stats').innerText = `Click: ${formatNumber(computeEffectiveClick())} | Idle: ${formatNumber(idle)}/s | Auto: ${formatNumber(auto)}/s | Main Upgrades: ${state.mainUpgrades}`;
+  document.getElementById('btnUpgrade').textContent = `⚡ Buy Main Upgrade (${formatNumber(state.mainUpgradeCost)})`;
+  document.getElementById('btnAuto').textContent = `🤖 Buy Auto (${formatNumber(state.autoCost)})`;
+}
+
+/* ===== MAIN BUTTONS ===== */
+document.getElementById('btnClick').addEventListener('click',()=>{ state.money+=computeEffectiveClick(); uiUpdate(); saveState(); });
+document.getElementById('btnUpgrade').addEventListener('click',()=>{
+  if(state.money>=state.mainUpgradeCost){ state.money-=state.mainUpgradeCost; state.mainUpgrades+=1; state.mainUpgradeCost=Math.floor(state.mainUpgradeCost*3.5); uiUpdate(); saveState(); }
+});
+document.getElementById('btnAuto').addEventListener('click',()=>{
+  if(!state.autoOwned && state.money>=state.autoCost){ state.money-=state.autoCost; state.autoOwned=true; uiUpdate(); saveState(); }
+});
+
+/* ===== TABS ===== */
+document.querySelectorAll('.tab-btn').forEach(b=>{b.addEventListener('click',()=>{document.querySelectorAll('.menu-content').forEach(m=>m.classList.remove('active')); document.getElementById(b.dataset.menu).classList.add('active');});});
+
+/* ===== IDLE LOOP ===== */
+setInterval(()=>{
+  const now=Date.now();
+  const dt=(now-state.lastTime)/1000;
+  state.lastTime=now;
+  const idle=computeEffectiveIdle();
+  const auto=state.autoOwned?computeEffectiveAutoPerSecond():0;
+  state.money+=(idle+auto)*dt;
+  uiUpdate();
+  saveState();
+},100);
+
+/* ===== PRESTIGE UI ===== */
+function buildPrestigeUI(){
+  const container=document.getElementById('prestigeList'); container.innerHTML='';
+  const order=['rebirth','ascension','eternity','oblivion'];
+  for(const key of order){
+    const L=state.layers[key];
+    const card=document.createElement('div'); card.className='prestige-card'; card.style.border=`2px solid ${L.color}`; card.style.background=`linear-gradient(90deg,rgba(255,255,255,0.02),${L.color}20)`;
+    const header=document.createElement('div'); header.innerHTML=`<strong style="color:${L.color}">${L.title}</strong> - Points: ${L.pts} | Req: ${formatNumber(L.req)}`;
+    card.appendChild(header);
+
+    const prestigeBtn=document.createElement('button'); prestigeBtn.className='action'; prestigeBtn.textContent=`Prestige ${L.title}`; prestigeBtn.disabled=state.money<L.req;
+    prestigeBtn.addEventListener('click',()=>{ if(state.money>=L.req){ performPrestige(key); } });
+    card.appendChild(prestigeBtn);
+
+    const coll=document.createElement('div'); coll.className='collapsible'; coll.textContent='Upgrades ▼';
+    const content=document.createElement('div'); content.className='content';
+
+    [['clickMult','Click Boost'],['idleMult','Idle Boost'],['autoStrength','Auto Strength']].forEach(([u,nm])=>{
+      const div=document.createElement('div'); div.style.marginTop='6px';
+      const btn=document.createElement('button'); btn.className='action';
+      btn.textContent=`Buy ${nm} (${formatNumber(L.upgradeCosts[u])} pts)`; btn.disabled=L.pts<L.upgradeCosts[u];
+      btn.addEventListener('click',()=>{ if(L.pts>=L.upgradeCosts[u]){ L.pts-=L.upgradeCosts[u]; L.upgrades[u]+=1; L.upgradeCosts[u]=Math.floor(L.upgradeCosts[u]*1.7); buildPrestigeUI(); saveState(); uiUpdate(); } });
+      div.appendChild(btn); content.appendChild(div);
+    });
+    coll.addEventListener('click',()=>{content.style.display=(content.style.display==='block'?'none':'block');});
+    card.appendChild(coll); card.appendChild(content);
+
+    container.appendChild(card);
+  }
+}
+
+/* ===== PRESTIGE LOGIC ===== */
+function performPrestige(key){
+  const L=state.layers[key];
+  const gain=Math.max(1,Math.floor(state.money/L.req));
+  L.pts+=gain;
+  state.money=0; state.baseClick=1; state.baseIdle=0.5; state.mainUpgrades=0; state.mainUpgradeCost=1000; state.autoOwned=false;
+  const layersOrder=['rebirth','ascension','eternity','oblivion']; const idx=layersOrder.indexOf(key);
+  for(let i=0;i<idx;i++){ const lowKey=layersOrder[i]; state.layers[lowKey].pts=0; state.layers[lowKey].upgrades={clickMult:0,idleMult:0,autoStrength:0}; state.layers[lowKey].upgradeCosts=JSON.parse(JSON.stringify(defaultLayers[lowKey].upgradeCosts)); }
+  buildPrestigeUI(); uiUpdate(); saveState(); alert(`Prestiged ${L.title}! Gained ${gain} ${L.title} pts.`);
+}
+
+/* ===== INIT ===== */
+buildPrestigeUI(); uiUpdate();
+</script>
+
+</body>
+</html>
