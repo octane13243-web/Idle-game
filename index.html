@@ -77,14 +77,14 @@ let state = {
   baseClick: 1,
   baseIdle: 0.5,
   mainUpgrades: 0,
-  mainUpgradeCost: 1000,
+  mainUpgradeCost: 25,
   autoOwned: false,
-  autoCost: 5000,
+  autoCost: 100,
   layers: {
-    rebirth: { pts:0, upgrades:{clickMult:0,idleMult:0,autoStrength:0}, upgradeCosts:{clickMult:10,idleMult:15,autoStrength:20}, req:1e6, tierFactor:2, color:'#FFD700', title:'Rebirth' },
-    ascension: { pts:0, upgrades:{clickMult:0,idleMult:0,autoStrength:0}, upgradeCosts:{clickMult:25,idleMult:40,autoStrength:60}, req:1e12, tierFactor:10, color:'#DA70D6', title:'Ascension' },
-    eternity: { pts:0, upgrades:{clickMult:0,idleMult:0,autoStrength:0}, upgradeCosts:{clickMult:200,idleMult:300,autoStrength:400}, req:1e18, tierFactor:50, color:'#00BFFF', title:'Eternity' },
-    oblivion: { pts:0, upgrades:{clickMult:0,idleMult:0,autoStrength:0}, upgradeCosts:{clickMult:1000,idleMult:1500,autoStrength:2000}, req:1e24, tierFactor:100, color:'#333333', title:'Oblivion' }
+    rebirth: { pts:0, upgrades:{clickMult:0,idleMult:0,autoStrength:0}, upgradeCosts:{clickMult:10,idleMult:15,autoStrength:20}, req:1e3, tierFactor:2, color:'#FFD700', title:'Rebirth' },
+    ascension: { pts:0, upgrades:{clickMult:0,idleMult:0,autoStrength:0}, upgradeCosts:{clickMult:25,idleMult:40,autoStrength:60}, req:1e6, tierFactor:10, color:'#DA70D6', title:'Ascension' },
+    eternity: { pts:0, upgrades:{clickMult:0,idleMult:0,autoStrength:0}, upgradeCosts:{clickMult:200,idleMult:300,autoStrength:400}, req:1e12, tierFactor:50, color:'#00BFFF', title:'Eternity' },
+    oblivion: { pts:0, upgrades:{clickMult:0,idleMult:0,autoStrength:0}, upgradeCosts:{clickMult:1000,idleMult:1500,autoStrength:2000}, req:1e18, tierFactor:100, color:'#333333', title:'Oblivion' }
   },
   lastTime: Date.now()
 };
@@ -126,7 +126,7 @@ function uiUpdate(){
 /* ===== MAIN BUTTONS ===== */
 document.getElementById('btnClick').addEventListener('click',()=>{ state.money+=computeEffectiveClick(); uiUpdate(); saveState(); });
 document.getElementById('btnUpgrade').addEventListener('click',()=>{
-  if(state.money>=state.mainUpgradeCost){ state.money-=state.mainUpgradeCost; state.mainUpgrades+=1; state.mainUpgradeCost=Math.floor(state.mainUpgradeCost*3.5); uiUpdate(); saveState(); }
+  if(state.money>=state.mainUpgradeCost){ state.money-=state.mainUpgradeCost; state.mainUpgrades+=1; state.mainUpgradeCost=Math.floor(state.mainUpgradeCost*1.3); uiUpdate(); saveState(); }
 });
 document.getElementById('btnAuto').addEventListener('click',()=>{
   if(!state.autoOwned && state.money>=state.autoCost){ state.money-=state.autoCost; state.autoOwned=true; uiUpdate(); saveState(); }
@@ -183,7 +183,7 @@ function performPrestige(key){
   const L=state.layers[key];
   const gain=Math.max(1,Math.floor(state.money/L.req));
   L.pts+=gain;
-  state.money=0; state.baseClick=1; state.baseIdle=0.5; state.mainUpgrades=0; state.mainUpgradeCost=1000; state.autoOwned=false;
+  state.money=0; state.baseClick=1; state.baseIdle=0.5; state.mainUpgrades=0; state.mainUpgradeCost=25; state.autoOwned=false;
   const layersOrder=['rebirth','ascension','eternity','oblivion']; const idx=layersOrder.indexOf(key);
   for(let i=0;i<idx;i++){ const lowKey=layersOrder[i]; state.layers[lowKey].pts=0; state.layers[lowKey].upgrades={clickMult:0,idleMult:0,autoStrength:0}; state.layers[lowKey].upgradeCosts=JSON.parse(JSON.stringify(defaultLayers[lowKey].upgradeCosts)); }
   buildPrestigeUI(); uiUpdate(); saveState(); alert(`Prestiged ${L.title}! Gained ${gain} ${L.title} pts.`);
