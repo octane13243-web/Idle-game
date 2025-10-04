@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mini Soundboard 🎶</title>
+<style>
+body { background:#111; color:#fff; font-family:sans-serif; text-align:center; padding:20px; }
+button { background:#222; border:2px solid #ff6347; border-radius:10px; color:white; font-size:1rem; margin:5px; padding:10px 15px; cursor:pointer; }
+button:hover { background:#333; }
+.current { color:#00ffcc; font-weight:bold; }
+</style>
+</head>
+<body>
+
+<h1 id="title">Mini Soundboard 🎉</h1>
+<button onclick="switchGUI()">Switch to Music 🎧</button>
+
+<div id="buttons"></div>
+
+<div id="music-controls" style="display:none;">
+  <h2>Music Player 🎶</h2>
+  <div id="music-buttons"></div>
+  <button onclick="toggleRepeat(this)">Repeat: Off</button>
+  <button onclick="toggleShuffle(this)">Shuffle: Off</button>
+  <button onclick="playQueue()">Play</button>
+  <button onclick="stopAudio()">Stop</button>
+  <div id="queue"></div>
+</div>
+
+<script>
+let currentAudio = null;
+let repeat = false;
+let shuffle = false;
+
+// === MEME SOUNDS ===
+const memeSounds = [
+  { name: 'Adrian', url: 'https://files.catbox.moe/vsiuu7.mp3' },
+  { name: 'SYFM Loud', url: 'https://files.catbox.moe/yrtz7r.mp3' }
+];
+
+const musicSongs = [
+  { name: 'Crystallized (Camellia)', url: 'https://files.catbox.moe/2nuf8l.mp3' },
+  { name: 'One Way Street (Siqlo)', url: 'https://files.catbox.moe/kpvpgn.mp3' },
+  { name: 'World of Scarlet (OfficialAz3)', url: 'https://files.catbox.moe/cubtes.mp3' },
+  { name: 'Flamewall (Camellia)', url: 'https://files.catbox.moe/vl47ei.mp3' },
+  { name: 'Montagem Direcao', url: 'https://files.catbox.moe/twpc2r.mp3' },
+  { name: 'The Next Arcady', url: 'https://files.catbox.moe/are35z.mp3' },
+  { name: 'Gourmet Race (ColBreakz)', url: 'https://files.catbox.moe/2nkgbn.mp3' }
+];
+
+
+
+let queue = [...musicSongs];
+let queueIndex = 0;
+
+// === UI ===
+const buttonsDiv = document.getElementById('buttons');
+const musicButtonsDiv = document.getElementById('music-buttons');
+const musicControlsDiv = document.getElementById('music-controls');
+const title = document.getElementById('title');
+const queueDiv = document.getElementById('queue');
+
+function createMemeButtons() {
+  buttonsDiv.innerHTML = '';
+  memeSounds.forEach(sound => {
+    const btn = document.createElement('button');
+    btn.textContent = sound.name;
+    btn.onclick = () => {
+      stopAudio();
+      if (!sound.url) return alert('No URL set for this sound!');
+      currentAudio = new Audio(sound.url);
+      currentAudio.play();
+    };
+    buttonsDiv.appendChild(btn);
+  });
+}
+
+function createMusicButtons() {
+  musicButtonsDiv.innerHTML = '';
+  musicSongs.forEach((song, index) => {
+    const btn = document.createElement('button');
+    btn.textContent = song.name;
+    btn.onclick = () => { 
+      if (!song.url) return alert('No URL set for this song!');
+      queueIndex = index; 
+      playQueue(); 
+    };
+    musicButtonsDiv.appendChild(btn);
+  });
+}
+
+let showingMusic = false;
+function switchGUI() {
+  showingMusic = !showingMusic;
+  if (showingMusic) {
+    buttonsDiv.style.display = 'none';
+    musicControlsDiv.style.display = 'block';
+    title.textContent = 'Music Player 🎶';
+  } else {
+    buttonsDiv.style.display = 'block';
+    musicControlsDiv.style.display = 'none';
+    title.textContent = 'Mini Soundboard 🎉';
+    stopAudio();
+  }
+}
+
+function playQueue() {
+  if (queue.length === 0) return;
+  stopAudio();
+  if (!queue[queueIndex].url) return alert('No URL set for this song!');
+  if (shuffle) queueIndex = Math.floor(Math.random() * queue.length);
+  const song = queue[queueIndex];
+  currentAudio = new Audio(song.url);
+  currentAudio.play();
+  currentAudio.onended = () => {
+    queueIndex++;
+    if (queueIndex >= queue.length) {
+      if (repeat) queueIndex = 0;
+      else return;
+    }
+    playQueue();
+  };
+  updateQueueUI();
+}
+
+function stopAudio() {
+  if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
+}
+
+function toggleRepeat(e) { repeat = !repeat; e.textContent = `Repeat: ${repeat ? 'On' : 'Off'}`; }
+function toggleShuffle(e) { shuffle = !shuffle; e.textContent = `Shuffle: ${shuffle ? 'On' : 'Off'}`; }
+
+function updateQueueUI() {
+  queueDiv.innerHTML = queue.map((song, i) =>
+    `<div class="${i === queueIndex ? 'current' : ''}">${i + 1}. ${song.name}</div>`
+  ).join('');
+}
+
+createMemeButtons();
+createMusicButtons();
+</script>
+
+</body>
+</html>
+
+
+
