@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cookie Reactor Idle</title>
+  <style>
+    :root {
+      --bg: #0f1222;
+      --panel: #1b2140;
+      --accent: #78f0c6;
+      --accent-2: #7fa6ff;
+      --text: #eef3ff;
+      --muted: #9fb0d8;
+      --danger: #ff7f96;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at top, #1f2750, var(--bg) 55%);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+    }
+
+    .game {
+      width: min(960px, 100%);
+      display: grid;
+      gap: 14px;
+      grid-template-columns: 1.1fr 0.9fr;
+    }
+
+    .card {
+      background: color-mix(in srgb, var(--panel) 95%, white);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+      padding: 16px;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    .title {
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      margin-bottom: 8px;
+    }
+
+    .resource {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 700;
+      color: var(--accent);
+      margin: 8px 0 6px;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+    }
+
+    .clicker {
+      width: 100%;
+      border: 0;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #75f8d5, #8fa8ff);
+      color: #11162b;
+      font-weight: 700;
+      font-size: 1.1rem;
+      padding: 14px;
+      cursor: pointer;
+      transition: transform 0.05s ease, filter 0.15s ease;
+    }
+
+    .clicker:hover { filter: brightness(1.06); }
+    .clicker:active { transform: scale(0.985); }
+
+    .section-title {
+      margin-bottom: 8px;
+      color: var(--accent-2);
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      font-size: 0.85rem;
+    }
+
+    .shop-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .shop-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .shop-item button {
+      border: 0;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-weight: 600;
+      color: #081127;
+      background: var(--accent);
+      cursor: pointer;
+      min-width: 96px;
+    }
+
+    .shop-item button:disabled {
+      cursor: not-allowed;
+      background: #556080;
+      color: #d8def0;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 4px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 8px 0;
+      color: var(--muted);
+    }
+
+    .achievements {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .badge {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(127, 166, 255, 0.2);
+      border: 1px solid rgba(127, 166, 255, 0.4);
+      color: #dbe6ff;
+      font-size: 0.78rem;
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .secondary {
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: transparent;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    .danger {
+      border-color: rgba(255, 127, 150, 0.5);
+      color: #ffc9d4;
+    }
+
+    @media (max-width: 820px) {
+      .game {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="game">
+    <section class="card">
+      <h1 class="title">⚛️ Cookie Reactor Idle</h1>
+      <p class="resource" id="cookies">0 Cookies</p>
+      <p class="meta" id="rate">0 / sec</p>
+      <button class="clicker" id="manual">Bake Cookie (+1)</button>
+
+      <div style="margin-top: 14px;">
+        <h2 class="section-title">Stats</h2>
+        <div class="row"><span>Total baked:</span><strong id="total">0</strong></div>
+        <div class="row"><span>Manual power:</span><strong id="clickPower">1</strong></div>
+        <div class="row"><span>Critical click chance:</span><strong id="crit">0%</strong></div>
+      </div>
+
+      <div style="margin-top: 14px;">
+        <h2 class="section-title">Achievements</h2>
+        <div class="achievements" id="achievements"></div>
+      </div>
+
+      <div class="controls">
+        <button class="secondary" id="save">Save</button>
+        <button class="secondary" id="load">Load</button>
+        <button class="secondary danger" id="reset">Reset</button>
+      </div>
+    </section>
+
+    <aside class="card">
+      <h2 class="section-title">Shop</h2>
+      <div class="shop-list" id="shop"></div>
+      <p class="small">Tip: prices increase by 15% each purchase.</p>
+    </aside>
+  </main>
+
+  <script>
+    const SAVE_KEY = "cookie-reactor-save-v1";
+
+    const state = {
+      cookies: 0,
+      totalCookies: 0,
+      clickPower: 1,
+      critChance: 0,
+      generators: {
+        cursor: 0,
+        oven: 0,
+        factory: 0,
+        portal: 0,
+      },
+      achievements: {},
+    };
+
+    const shopItems = [
+      { id: "cursor", name: "Cursor", baseCost: 15, cps: 0.1, desc: "Auto-clicks a cookie." },
+      { id: "oven", name: "Oven", baseCost: 80, cps: 1, desc: "A warm machine for steady output." },
+      { id: "factory", name: "Factory", baseCost: 550, cps: 8, desc: "Industrial cookie engineering." },
+      { id: "portal", name: "Portal", baseCost: 4000, cps: 50, desc: "Imports cookies from another dimension." },
+    ];
+
+    const achievementDefs = [
+      { id: "starter", name: "First Batch", check: s => s.totalCookies >= 10 },
+      { id: "rolling", name: "Rolling Dough", check: s => s.totalCookies >= 250 },
+      { id: "tycoon", name: "Cookie Tycoon", check: s => s.totalCookies >= 5000 },
+      { id: "machine", name: "Automation", check: s => getCps(s) >= 10 },
+      { id: "lucky", name: "Lucky Baker", check: s => s.critChance >= 10 },
+    ];
+
+    const el = {
+      cookies: document.getElementById("cookies"),
+      rate: document.getElementById("rate"),
+      total: document.getElementById("total"),
+      clickPower: document.getElementById("clickPower"),
+      crit: document.getElementById("crit"),
+      shop: document.getElementById("shop"),
+      achievements: document.getElementById("achievements"),
+      manual: document.getElementById("manual"),
+      save: document.getElementById("save"),
+      load: document.getElementById("load"),
+      reset: document.getElementById("reset"),
+    };
+
+    function format(n) {
+      return n >= 1000 ? n.toLocaleString(undefined, { maximumFractionDigits: 1 }) : n.toFixed(1).replace('.0', '');
+    }
+
+    function getCost(item) {
+      return Math.floor(item.baseCost * Math.pow(1.15, state.generators[item.id]));
+    }
+
+    function getCps(s = state) {
+      return shopItems.reduce((sum, item) => sum + s.generators[item.id] * item.cps, 0);
+    }
+
+    function buy(itemId) {
+      const item = shopItems.find(i => i.id === itemId);
+      const cost = getCost(item);
+      if (state.cookies < cost) return;
+      state.cookies -= cost;
+      state.generators[item.id]++;
+
+      if (itemId === "factory" && state.critChance < 10) {
+        state.critChance = 10;
+      }
+
+      render();
+    }
+
+    function clickCookie() {
+      const isCrit = Math.random() * 100 < state.critChance;
+      const gain = state.clickPower * (isCrit ? 5 : 1);
+      state.cookies += gain;
+      state.totalCookies += gain;
+      unlockAchievements();
+      render();
+    }
+
+    function unlockAchievements() {
+      achievementDefs.forEach(a => {
+        if (!state.achievements[a.id] && a.check(state)) {
+          state.achievements[a.id] = true;
+          if (a.id === "rolling") state.clickPower += 1;
+          if (a.id === "tycoon") state.clickPower += 2;
+        }
+      });
+    }
+
+    function renderShop() {
+      el.shop.innerHTML = "";
+      shopItems.forEach(item => {
+        const cost = getCost(item);
+        const owned = state.generators[item.id];
+        const row = document.createElement("div");
+        row.className = "shop-item";
+        row.innerHTML = `
+          <div>
+            <strong>${item.name} x${owned}</strong>
+            <div class="small">+${item.cps}/sec • ${item.desc}</div>
+          </div>
+        `;
+
+        const btn = document.createElement("button");
+        btn.textContent = `Buy (${format(cost)})`;
+        btn.disabled = state.cookies < cost;
+        btn.onclick = () => buy(item.id);
+
+        row.appendChild(btn);
+        el.shop.appendChild(row);
+      });
+    }
+
+    function renderAchievements() {
+      const unlocked = achievementDefs.filter(a => state.achievements[a.id]);
+      if (unlocked.length === 0) {
+        el.achievements.innerHTML = `<span class="small">No achievements yet.</span>`;
+        return;
+      }
+      el.achievements.innerHTML = unlocked
+        .map(a => `<span class="badge">${a.name}</span>`)
+        .join("");
+    }
+
+    function render() {
+      el.cookies.textContent = `${format(state.cookies)} Cookies`;
+      el.rate.textContent = `${format(getCps())} / sec`;
+      el.total.textContent = format(state.totalCookies);
+      el.clickPower.textContent = state.clickPower;
+      el.crit.textContent = `${state.critChance}%`;
+      renderShop();
+      renderAchievements();
+    }
+
+    function saveGame() {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    }
+
+    function loadGame() {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      Object.assign(state, data);
+      unlockAchievements();
+      render();
+    }
+
+    function resetGame() {
+      localStorage.removeItem(SAVE_KEY);
+      location.reload();
+    }
+
+    el.manual.addEventListener("click", clickCookie);
+    el.save.addEventListener("click", saveGame);
+    el.load.addEventListener("click", loadGame);
+    el.reset.addEventListener("click", resetGame);
+
+    setInterval(() => {
+      const gain = getCps() / 10;
+      if (gain > 0) {
+        state.cookies += gain;
+        state.totalCookies += gain;
+      }
+      unlockAchievements();
+      render();
+    }, 100);
+
+    loadGame();
+    render();
+  </script>
+</body>
+</html>
